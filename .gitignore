@@ -1,23 +1,6 @@
 # macOS
 .DS_Store
 
-# Xcode
-iOS/**/xcuserdata/
-iOS/**/project.xcworkspace/xcuserdata/
-iOS/**/*.xcuserstate
-iOS/build/
-iOS/DerivedData/
-
-# Android / Gradle
-Android/**/build/
-Android/.gradle/
-Android/.kotlin/
-Android/local.properties
-Android/**/*.iml
-Android/.idea/
-Android/**/.cxx/
-Android/**/captures/
-
 # Windows / .NET
 Windows/**/bin/
 Windows/**/obj/
