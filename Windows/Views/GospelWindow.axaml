@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="640"
         x:Class="FileHustle.Views.GospelWindow"
+        Icon="avares://FileHustle/Assets/AppIcon.png"
         Title="FileHustle"
         Width="480" Height="640"
         WindowStartupLocation="CenterOwner">

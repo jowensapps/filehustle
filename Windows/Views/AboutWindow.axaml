@@ -5,6 +5,7 @@
         xmlns:views="using:FileHustle.Views"
         mc:Ignorable="d" d:DesignWidth="360" d:DesignHeight="420"
         x:Class="FileHustle.Views.AboutWindow"
+        Icon="avares://FileHustle/Assets/AppIcon.png"
         Title="About FileHustle"
         Width="360" Height="440"
         CanResize="False"

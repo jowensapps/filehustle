@@ -8,6 +8,7 @@
         xmlns:views="using:FileHustle.Views"
         mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="640"
         x:Class="FileHustle.MainWindow"
+        Icon="avares://FileHustle/Assets/AppIcon.png"
         Title="FileHustle"
         Width="480" Height="640">
     <Grid>
