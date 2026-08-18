@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>FileHustle finds other FileHustle devices on your WiFi network so you can send and receive files with them.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_filehustle._tcp</string>
+	</array>
+	<!-- Makes the app's Documents folder (where Received/ lives) browsable
+	     under Files > On My iPhone/iPad > FileHustle, so a received file can
+	     actually be gotten out of the app instead of being stuck in the
+	     sandbox with no way to save/move/share it elsewhere. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+</dict>
+</plist>

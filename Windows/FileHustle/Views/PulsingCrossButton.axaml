@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FileHustle.Views.PulsingCrossButton">
+    <Button x:Name="CrossButton" Background="Transparent" BorderThickness="0" Padding="4" Click="OnClicked" Cursor="Hand">
+        <Path x:Name="CrossPath" Width="14" Height="14" Stretch="Uniform"
+              Data="M10.5,3 L13.5,3 L13.5,8 L18.5,8 L18.5,11 L13.5,11 L13.5,21 L10.5,21 L10.5,11 L5.5,11 L5.5,8 L10.5,8 Z"
+              Fill="{DynamicResource SystemAccentColor}">
+            <Path.RenderTransform>
+                <ScaleTransform ScaleX="1" ScaleY="1"/>
+            </Path.RenderTransform>
+        </Path>
+    </Button>
+</UserControl>

@@ -1,0 +1,97 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:FileHustle"
+        xmlns:net="using:FileHustle.Net"
+        xmlns:data="using:FileHustle.Data"
+        xmlns:views="using:FileHustle.Views"
+        mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="640"
+        x:Class="FileHustle.MainWindow"
+        Title="FileHustle"
+        Width="480" Height="640">
+    <Grid>
+        <ScrollViewer>
+            <StackPanel Margin="24" Spacing="6">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+                    <TextBlock Grid.Column="0" x:Name="TitleText" Text="FileHustle" FontSize="26" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="ⓘ" FontSize="18" Background="Transparent" BorderThickness="0" Click="OnAboutClicked"/>
+                </Grid>
+
+                <TextBlock Text="Nearby Devices" FontWeight="SemiBold" Opacity="0.7"/>
+                <TextBlock x:Name="NoPeersText" Text="Looking for devices on your WiFi network…" Opacity="0.6" Margin="0,4"/>
+                <ItemsControl x:Name="PeersList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="net:Peer">
+                            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,2" Tag="{Binding}">
+                                <Button.Content>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="💻"/>
+                                        <TextBlock Text="{Binding Name}"/>
+                                    </StackPanel>
+                                </Button.Content>
+                                <Button.Flyout>
+                                    <Flyout>
+                                        <StackPanel Spacing="4" Width="180">
+                                            <Button Content="Send Files…" Click="OnSendFilesClicked" Tag="{Binding}" HorizontalAlignment="Stretch"/>
+                                            <Button Content="Send Folder…" Click="OnSendFolderClicked" Tag="{Binding}" HorizontalAlignment="Stretch"/>
+                                            <Button Content="Send Test File" Click="OnSendTestFileClicked" Tag="{Binding}" HorizontalAlignment="Stretch" IsVisible="{x:Static local:BuildInfo.IsDebug}"/>
+                                            <Button Content="Send Test Folder" Click="OnSendTestFolderClicked" Tag="{Binding}" HorizontalAlignment="Stretch" IsVisible="{x:Static local:BuildInfo.IsDebug}"/>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="Recent Transfers" FontWeight="SemiBold" Opacity="0.7" Margin="0,20,0,0"/>
+                <TextBlock x:Name="NoHistoryText" Text="No transfers yet" Opacity="0.6" Margin="0,4"/>
+                <ItemsControl x:Name="HistoryList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="data:TransferHistoryEntry">
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6">
+                                <TextBlock Text="{Binding DirectionArrow}" VerticalAlignment="Top"/>
+                                <StackPanel HorizontalAlignment="Stretch" MinWidth="260">
+                                    <TextBlock Text="{Binding ItemsSummary}"/>
+                                    <TextBlock Text="{Binding DetailLine}" Opacity="0.6" FontSize="12"/>
+                                </StackPanel>
+                                <Button Content="Open" Click="OnOpenReceivedClicked" Tag="{Binding}" IsVisible="{Binding CanOpen}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border x:Name="IncomingOverlay" IsVisible="False" Background="#CC000000">
+            <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="12" Padding="24" Width="360" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="12">
+                    <TextBlock x:Name="IncomingTitleText" FontWeight="Bold" FontSize="16" TextWrapping="Wrap"/>
+                    <ItemsControl x:Name="IncomingItemsList"/>
+                    <TextBlock x:Name="IncomingSizeText" Opacity="0.6"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                        <Button Content="Decline" Click="OnDeclineClicked"/>
+                        <Button Content="Accept" Click="OnAcceptClicked"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border x:Name="ErrorOverlay" IsVisible="False" Background="#CC000000">
+            <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="12" Padding="24" Width="320" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Couldn't send files" FontWeight="Bold" FontSize="16"/>
+                    <TextBlock x:Name="ErrorText" TextWrapping="Wrap"/>
+                    <Button Content="OK" Click="OnErrorOkClicked" HorizontalAlignment="Right"/>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border x:Name="SendingOverlay" IsVisible="False" Background="#00000000" IsHitTestVisible="False">
+            <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="8" Padding="16,10" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="Sending…"/>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

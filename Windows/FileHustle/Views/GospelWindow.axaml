@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="640"
+        x:Class="FileHustle.Views.GospelWindow"
+        Title="FileHustle"
+        Width="480" Height="640"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="24">
+        <Button Grid.Row="0" Content="✕" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Click="OnCloseClicked" Margin="0,0,0,8"/>
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel x:Name="PageContent" Spacing="16"/>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" x:Name="DotsPanel" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" Margin="0,16,0,0">
+            <Button Grid.Column="0" x:Name="BackButton" Content="Back" HorizontalAlignment="Left" Click="OnBackClicked" IsVisible="False"/>
+            <Button Grid.Column="1" x:Name="NextButton" Content="Next" HorizontalAlignment="Right" Click="OnNextClicked"/>
+        </Grid>
+    </Grid>
+</Window>

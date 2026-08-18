@@ -1,0 +1,43 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="using:FileHustle.Views"
+        mc:Ignorable="d" d:DesignWidth="360" d:DesignHeight="420"
+        x:Class="FileHustle.Views.AboutWindow"
+        Title="About FileHustle"
+        Width="360" Height="440"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+    <Grid>
+        <StackPanel Margin="24" Spacing="14" VerticalAlignment="Center">
+            <!-- No designed app icon yet — a plain transfer glyph stands in,
+                 matching the SF Symbol stand-in used on iOS's AboutView. -->
+            <TextBlock Text="⇅" FontSize="48" HorizontalAlignment="Center"
+                       Foreground="{DynamicResource SystemAccentColor}"/>
+
+            <TextBlock Text="Version 1.0.0" HorizontalAlignment="Center" Opacity="0.6" FontSize="13"/>
+
+            <TextBlock Text="FileHustle was developed by" HorizontalAlignment="Center" TextAlignment="Center"/>
+            <TextBlock Text="Jared Owens" HorizontalAlignment="Center" TextAlignment="Center" FontSize="17" FontWeight="SemiBold" Margin="0,-10,0,0"/>
+            <TextBlock Text="founder and solo developer of J. O. Apps." HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,-10,0,0"/>
+
+            <views:PulsingCrossButton x:Name="CrossButton" HorizontalAlignment="Center" Clicked="OnCrossClicked" Margin="0,-4,0,0"/>
+
+            <Button Content="Report a Bug" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="OnReportBugClicked" Margin="0,10,0,0"/>
+        </StackPanel>
+
+        <Border x:Name="GospelPromptOverlay" IsVisible="False" Background="#CC000000">
+            <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="12" Padding="24" Width="300" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="An honest question" FontWeight="Bold" FontSize="16"/>
+                    <TextBlock Text="Do you know for sure that you will go to Heaven when you die?" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                        <Button Content="Close" Click="OnGospelPromptCloseClicked"/>
+                        <Button Content="More" Click="OnGospelPromptMoreClicked"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</Window>
