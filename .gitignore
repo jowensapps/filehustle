@@ -1,6 +1,15 @@
 # macOS
 .DS_Store
 
+# This repo is scoped to the Windows client only — iOS/Android live in the
+# same local checkout but aren't tracked here. Explicitly ignored (not just
+# left untracked) so Xcode's own Source Control integration can't silently
+# re-stage individual asset-catalog files when it notices this enclosing repo.
+iOS/
+Android/
+fh_logo.png
+filehustle.png
+
 # Windows / .NET
 Windows/**/bin/
 Windows/**/obj/
