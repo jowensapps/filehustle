@@ -9,9 +9,19 @@ This repo contains the Windows client, built with [Avalonia UI](https://avalonia
 (.NET). See [`docs/protocol.md`](docs/protocol.md) for the wire protocol
 this client implements.
 
+## Download
+
+The easiest way to get FileHustle is to grab the prebuilt executable from
+the [Releases page](https://github.com/jowensapps/filehustle/releases) —
+download `FileHustle.exe` and run it, no installation needed.
+
+> **Note:** Windows may show a SmartScreen warning ("Windows protected
+> your PC") since the exe isn't code-signed. Click **More info** → **Run
+> anyway** to proceed.
+
 ## Building and running
 
-The repo ships source only — no prebuilt `.exe` is checked in. To build one:
+If you'd rather build from source instead of using the Releases download:
 
 1. Install the [.NET SDK](https://dotnet.microsoft.com/download) (this
    project targets **.NET 10**).
@@ -21,9 +31,10 @@ The repo ships source only — no prebuilt `.exe` is checked in. To build one:
    ```
    or use **Code → Download ZIP** on the GitHub repo page if git isn't
    available.
-3. From the `Windows/` folder, publish a self-contained executable:
+3. From the `Windows/` folder, publish a self-contained single-file
+   executable:
    ```
-   dotnet publish -r win-x64 -c Release --self-contained true
+   dotnet publish -r win-x64 -c Release --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
    ```
    The `.exe` lands in `bin/Release/net10.0/win-x64/publish/FileHustle.exe`.
    Copy that whole `publish` folder anywhere and run it — no installer needed.
@@ -41,6 +52,8 @@ For local development instead of a published build, `dotnet run` from the
   devices show up in discovery, this is a network policy issue with no
   app-side fix — try a different network (e.g. a home WiFi or a personal
   hotspot).
+- When you receive a file, FileHustle will prompt you to choose where to
+  save it rather than opening it automatically.
 
 ## Support
 
