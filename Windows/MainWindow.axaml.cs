@@ -16,6 +16,8 @@ namespace FileHustle;
 
 public partial class MainWindow : Window
 {
+    private Peer? _nicknameTargetPeer;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -36,6 +38,11 @@ public partial class MainWindow : Window
             PeerDiscovery.StartAdvertising(port);
             PeerDiscovery.StartBrowsing();
             PeerDiscovery.Start();
+
+            if (!TutorialState.HasSeenTutorial)
+            {
+                new TutorialWindow().ShowDialog(this);
+            }
         };
         Closing += (_, _) =>
         {
@@ -68,6 +75,49 @@ public partial class MainWindow : Window
     private void OnErrorOkClicked(object? sender, RoutedEventArgs e) => ErrorOverlay.IsVisible = false;
 
     private void OnAboutClicked(object? sender, RoutedEventArgs e) => new AboutWindow().ShowDialog(this);
+
+    /// A peer's broadcast Name regenerates every launch (see DeviceIdentity),
+    /// so this lets you attach a stable nickname to its Id instead — the
+    /// only way to actually recognize the same device across sessions.
+    private void OnSetNicknameClicked(object? sender, RoutedEventArgs e)
+    {
+        var peer = (Peer)((Button)sender!).Tag!;
+        _nicknameTargetPeer = peer;
+        NicknamePromptText.Text = $"Give {peer.Name} a name you'll recognize next time — its broadcast name changes every launch.";
+        NicknameTextBox.Text = PeerNicknames.Nickname(peer.Id) ?? "";
+        NicknameOverlay.IsVisible = true;
+    }
+
+    private void OnNicknameSaveClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_nicknameTargetPeer != null)
+        {
+            PeerNicknames.SetNickname(_nicknameTargetPeer.Id, NicknameTextBox.Text);
+            RefreshPeersList();
+        }
+        NicknameOverlay.IsVisible = false;
+    }
+
+    private void OnNicknameClearClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_nicknameTargetPeer != null)
+        {
+            PeerNicknames.SetNickname(_nicknameTargetPeer.Id, null);
+            RefreshPeersList();
+        }
+        NicknameOverlay.IsVisible = false;
+    }
+
+    private void OnNicknameCancelClicked(object? sender, RoutedEventArgs e) => NicknameOverlay.IsVisible = false;
+
+    /// Peer is a plain record with no change notification, so DisplayName/
+    /// HasNickname bindings won't pick up a nickname edit on their own —
+    /// force a rebind by reassigning ItemsSource.
+    private void RefreshPeersList()
+    {
+        PeersList.ItemsSource = null;
+        PeersList.ItemsSource = PeerDiscovery.Peers;
+    }
 
     /// Received files land in FileHustle's own Documents subfolder with no
     /// obvious way to actually use them — this opens the first item with

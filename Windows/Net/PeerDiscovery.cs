@@ -6,7 +6,15 @@ using Makaretu.Dns;
 
 namespace FileHustle.Net;
 
-public record Peer(string Id, string Name, string Host, int Port);
+public record Peer(string Id, string Name, string Host, int Port)
+{
+    /// The peer's broadcast Name regenerates every time it restarts (see
+    /// DeviceIdentity), so a user-assigned nickname — keyed by the stable
+    /// Id — is what's actually recognizable across launches, when set.
+    public string DisplayName => PeerNicknames.Nickname(Id) ?? Name;
+
+    public bool HasNickname => PeerNicknames.Nickname(Id) != null;
+}
 
 /// mDNS-based mirror of iOS/Android's PeerBrowser + the advertising half of
 /// TransferServer. See docs/protocol.md for the wire-level discovery

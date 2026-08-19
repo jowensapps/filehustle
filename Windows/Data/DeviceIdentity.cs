@@ -10,7 +10,6 @@ public static class DeviceIdentity
     private class Identity
     {
         public string Id { get; set; } = "";
-        public string Name { get; set; } = "";
     }
 
     private static readonly string SettingsPath = Path.Combine(
@@ -40,7 +39,7 @@ public static class DeviceIdentity
             }
         }
 
-        var fresh = new Identity { Id = Guid.NewGuid().ToString(), Name = GenerateRandomName() };
+        var fresh = new Identity { Id = Guid.NewGuid().ToString() };
         Save(fresh);
         _cached = fresh;
         return fresh;
@@ -56,18 +55,19 @@ public static class DeviceIdentity
 
     /// Defaults to a generated name rather than the real computer name —
     /// that broadcasts in mDNS discovery to everyone on the WiFi, not just
-    /// people you actually transfer with. Word lists match iOS/Android's
-    /// DeviceIdentity for consistency.
-    public static string Name
+    /// people you actually transfer with. Regenerated fresh every process
+    /// launch (not persisted, unlike Id) — same value for the lifetime of
+    /// this run so mDNS advertising stays consistent, but a new name each
+    /// time the app restarts, for stronger anonymity. Recognizing a
+    /// specific device across launches goes through PeerNicknames instead,
+    /// keyed by the stable Id above. Set in a static constructor (not a
+    /// field initializer) so it runs after Adjectives/Nouns/Rng below are
+    /// guaranteed initialized, regardless of field declaration order.
+    public static readonly string Name;
+
+    static DeviceIdentity()
     {
-        get => Load().Name;
-        set
-        {
-            var identity = Load();
-            identity.Name = value;
-            Save(identity);
-            _cached = identity;
-        }
+        Name = GenerateRandomName();
     }
 
     private static readonly string[] Adjectives =

@@ -28,7 +28,10 @@
                                 <Button.Content>
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <TextBlock Text="💻"/>
-                                        <TextBlock Text="{Binding Name}"/>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding DisplayName}"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="11" Opacity="0.6" IsVisible="{Binding HasNickname}"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Button.Content>
                                 <Button.Flyout>
@@ -36,6 +39,7 @@
                                         <StackPanel Spacing="4" Width="180">
                                             <Button Content="Send Files…" Click="OnSendFilesClicked" Tag="{Binding}" HorizontalAlignment="Stretch"/>
                                             <Button Content="Send Folder…" Click="OnSendFolderClicked" Tag="{Binding}" HorizontalAlignment="Stretch"/>
+                                            <Button Content="Set Nickname…" Click="OnSetNicknameClicked" Tag="{Binding}" HorizontalAlignment="Stretch"/>
                                             <Button Content="Send Test File" Click="OnSendTestFileClicked" Tag="{Binding}" HorizontalAlignment="Stretch" IsVisible="{x:Static local:BuildInfo.IsDebug}"/>
                                             <Button Content="Send Test Folder" Click="OnSendTestFolderClicked" Tag="{Binding}" HorizontalAlignment="Stretch" IsVisible="{x:Static local:BuildInfo.IsDebug}"/>
                                         </StackPanel>
@@ -92,6 +96,21 @@
         <Border x:Name="SendingOverlay" IsVisible="False" Background="#00000000" IsHitTestVisible="False">
             <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="8" Padding="16,10" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <TextBlock Text="Sending…"/>
+            </Border>
+        </Border>
+
+        <Border x:Name="NicknameOverlay" IsVisible="False" Background="#CC000000">
+            <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="12" Padding="24" Width="320" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Set Nickname" FontWeight="Bold" FontSize="16"/>
+                    <TextBlock x:Name="NicknamePromptText" TextWrapping="Wrap" Opacity="0.75"/>
+                    <TextBox x:Name="NicknameTextBox" PlaceholderText="Nickname"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                        <Button Content="Clear" Click="OnNicknameClearClicked"/>
+                        <Button Content="Cancel" Click="OnNicknameCancelClicked"/>
+                        <Button Content="Save" Click="OnNicknameSaveClicked"/>
+                    </StackPanel>
+                </StackPanel>
             </Border>
         </Border>
     </Grid>

@@ -44,4 +44,6 @@ public partial class AboutWindow : Window
             // No mail client configured — nothing sensible to do here.
         }
     }
+
+    private void OnViewTutorialClicked(object? sender, RoutedEventArgs e) => new TutorialWindow().ShowDialog(this);
 }
