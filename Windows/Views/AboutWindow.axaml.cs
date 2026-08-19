@@ -46,4 +46,6 @@ public partial class AboutWindow : Window
     }
 
     private void OnViewTutorialClicked(object? sender, RoutedEventArgs e) => new TutorialWindow().ShowDialog(this);
+
+    private void OnPrivacyPolicyClicked(object? sender, RoutedEventArgs e) => new PrivacyPolicyWindow().ShowDialog(this);
 }

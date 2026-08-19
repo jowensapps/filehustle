@@ -32,16 +32,21 @@ public partial class MainWindow : Window
 
         TransferServer.IncomingRequestChanged += OnIncomingRequestChanged;
 
-        Opened += (_, _) =>
+        Opened += async (_, _) =>
         {
             var port = TransferServer.Start();
             PeerDiscovery.StartAdvertising(port);
             PeerDiscovery.StartBrowsing();
             PeerDiscovery.Start();
 
+            if (!PrivacyPolicyState.HasSeenPrivacyPolicy)
+            {
+                await new PrivacyPolicyWindow().ShowDialog(this);
+            }
+
             if (!TutorialState.HasSeenTutorial)
             {
-                new TutorialWindow().ShowDialog(this);
+                await new TutorialWindow().ShowDialog(this);
             }
         };
         Closing += (_, _) =>

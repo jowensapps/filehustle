@@ -1,0 +1,49 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="560"
+        x:Class="FileHustle.Views.PrivacyPolicyWindow"
+        Icon="avares://FileHustle/Assets/AppIcon.png"
+        Title="Privacy Policy"
+        Width="480" Height="560"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="*,Auto" Margin="24">
+        <ScrollViewer Grid.Row="0">
+            <StackPanel Spacing="20">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="The short version" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                               Text="FileHustle doesn't collect, store, or transmit any of your personal data — not to us, not to anyone. There are no accounts, no analytics, and no advertising. Everything happens directly between your device and the device you're sending to, over your own WiFi network."/>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Text="What stays on your device" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                               Text="Your device's broadcast name (a made-up name like &quot;Tidy Yak&quot;) is generated fresh each launch and never stored. Any nicknames you give nearby devices, and your recent transfer history, are saved only on your device and never leave it."/>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Text="What happens during a transfer" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                               Text="Files move directly between your device and the device you choose, over your local WiFi network only. They never pass through any server operated by us or anyone else. Only devices on the same local network running FileHustle can see or receive anything from you — and only if you explicitly choose to send to them."/>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Text="What we don't do" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                               Text="No account or sign-up. No analytics, tracking, or advertising SDKs. No data sold, shared, or transmitted to third parties. No data collected from children or anyone else — because none is collected at all."/>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Changes to this policy" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                               Text="If anything about this changes, this policy will be updated and the date below will reflect that."/>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Contact" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.75" Text="Questions? Email j.owens.apps@gmail.com."/>
+                </StackPanel>
+                <TextBlock Text="Effective August 18, 2026" FontSize="11" Opacity="0.5"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Grid.Row="1" Content="I Understand" HorizontalAlignment="Right" Margin="0,16,0,0" Click="OnUnderstandClicked"/>
+    </Grid>
+</Window>

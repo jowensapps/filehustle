@@ -7,7 +7,7 @@
         x:Class="FileHustle.Views.AboutWindow"
         Icon="avares://FileHustle/Assets/AppIcon.png"
         Title="About FileHustle"
-        Width="360" Height="480"
+        Width="360" Height="520"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
     <Grid>
@@ -26,6 +26,7 @@
 
             <Button Content="Report a Bug" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="OnReportBugClicked" Margin="0,10,0,0"/>
             <Button Content="View Tutorial" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="OnViewTutorialClicked"/>
+            <Button Content="Privacy Policy" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="OnPrivacyPolicyClicked"/>
         </StackPanel>
 
         <Border x:Name="GospelPromptOverlay" IsVisible="False" Background="#CC000000">
