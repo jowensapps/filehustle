@@ -42,6 +42,11 @@ For local development instead of a published build, `dotnet run` from the
   app-side fix — try a different network (e.g. a home WiFi or a personal
   hotspot).
 
+## Support
+
+Questions, bugs, or feature requests — see [`SUPPORT.md`](SUPPORT.md) or
+email [j.owens.apps@gmail.com](mailto:j.owens.apps@gmail.com).
+
 ## Privacy
 
 FileHustle collects no data — see [`PRIVACY.md`](PRIVACY.md).
