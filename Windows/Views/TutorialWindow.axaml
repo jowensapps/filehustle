@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="500"
+        x:Class="FileHustle.Views.TutorialWindow"
+        Icon="avares://FileHustle/Assets/AppIcon.png"
+        Title="How FileHustle Works"
+        Width="480" Height="500"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="*,Auto" Margin="24">
+        <ScrollViewer Grid.Row="0">
+            <StackPanel Spacing="28">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Your device has a random name" FontSize="17" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                               Text="FileHustle gives your device a made-up name like &quot;Tidy Yak&quot; instead of your real computer name. That's on purpose — broadcasting your actual name to everyone on the WiFi, not just the person you're sending to, is a privacy risk on shared networks. The name stays the same every time you open the app."/>
+                </StackPanel>
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Save files after they arrive" FontSize="17" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                               Text="A received file lands in FileHustle's own folder, not your regular downloads. Click Open next to it under Recent Transfers to open it with its default app — from there you can save or move it wherever you like."/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Grid.Row="1" Content="Got It" HorizontalAlignment="Right" Margin="0,16,0,0" Click="OnGotItClicked"/>
+    </Grid>
+</Window>
