@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        TitleText.Text = $"FileHustle — {DeviceIdentity.Name}";
+        DeviceNameText.Text = DeviceIdentity.Name;
 
         PeersList.ItemsSource = PeerDiscovery.Peers;
         HistoryList.ItemsSource = TransferHistoryStore.Entries;

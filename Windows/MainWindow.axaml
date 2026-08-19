@@ -14,10 +14,13 @@
     <Grid>
         <ScrollViewer>
             <StackPanel Margin="24" Spacing="6">
-                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16">
-                    <TextBlock Grid.Column="0" x:Name="TitleText" Text="FileHustle" FontSize="26" FontWeight="Bold" VerticalAlignment="Center"/>
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                    <TextBlock Grid.Column="0" Text="FileHustle" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <Button Grid.Column="1" Content="ⓘ" FontSize="18" Background="Transparent" BorderThickness="0" Click="OnAboutClicked"/>
                 </Grid>
+
+                <TextBlock Text="This device:" FontWeight="SemiBold" Opacity="0.7"/>
+                <TextBlock x:Name="DeviceNameText" FontWeight="SemiBold" Opacity="0.7" Margin="0,0,0,16"/>
 
                 <TextBlock Text="Nearby Devices" FontWeight="SemiBold" Opacity="0.7"/>
                 <TextBlock x:Name="NoPeersText" Text="Looking for devices on your WiFi network…" Opacity="0.6" Margin="0,4"/>
