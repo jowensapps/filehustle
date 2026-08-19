@@ -42,6 +42,10 @@ For local development instead of a published build, `dotnet run` from the
   app-side fix — try a different network (e.g. a home WiFi or a personal
   hotspot).
 
+## Privacy
+
+FileHustle collects no data — see [`PRIVACY.md`](PRIVACY.md).
+
 ## License
 
 GPL-3.0 — see [`LICENSE`](LICENSE).
