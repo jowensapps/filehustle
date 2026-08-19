@@ -43,9 +43,7 @@
                                             <Button Content="Send Files…" Click="OnSendFilesClicked" Tag="{Binding}" HorizontalAlignment="Stretch"/>
                                             <Button Content="Send Folder…" Click="OnSendFolderClicked" Tag="{Binding}" HorizontalAlignment="Stretch"/>
                                             <Button Content="Set Nickname…" Click="OnSetNicknameClicked" Tag="{Binding}" HorizontalAlignment="Stretch"/>
-                                            <Button Content="Send Test File" Click="OnSendTestFileClicked" Tag="{Binding}" HorizontalAlignment="Stretch" IsVisible="{x:Static local:BuildInfo.IsDebug}"/>
-                                            <Button Content="Send Test Folder" Click="OnSendTestFolderClicked" Tag="{Binding}" HorizontalAlignment="Stretch" IsVisible="{x:Static local:BuildInfo.IsDebug}"/>
-                                        </StackPanel>
+                                            <Button Content="Send Test File" Click="OnSendTestFileClicked" Tag="{Binding}" HorizontalAlignment="Stretch" IsVisible="{x:Static local:BuildInfo.IsDebug}"/>                                        </StackPanel>
                                     </Flyout>
                                 </Button.Flyout>
                             </Button>

@@ -182,19 +182,6 @@ public partial class MainWindow : Window
         _ = SendFilesAsync(new List<string> { path }, peer);
     }
 
-    private void OnSendTestFolderClicked(object? sender, RoutedEventArgs e)
-    {
-        var peer = (Peer)((Button)sender!).Tag!;
-        var folder = Path.Combine(Path.GetTempPath(), $"filehustle-test-folder-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
-        Directory.CreateDirectory(folder);
-        File.WriteAllText(Path.Combine(folder, "one.txt"), "First file");
-        File.WriteAllText(Path.Combine(folder, "two.txt"), "Second file");
-        var nested = Path.Combine(folder, "nested");
-        Directory.CreateDirectory(nested);
-        File.WriteAllText(Path.Combine(nested, "three.txt"), "Nested file");
-        _ = SendFolderAsync(folder, peer);
-    }
-
     private async Task SendFilesAsync(List<string> paths, Peer peer)
     {
         SendingOverlay.IsVisible = true;
