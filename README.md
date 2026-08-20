@@ -34,7 +34,7 @@ If you'd rather build from source instead of using the Releases download:
 3. From the `Windows/` folder, publish a self-contained single-file
    executable:
    ```
-   dotnet publish -r win-x64 -c Release --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
+   dotnet publish -r win-x64 -c Release --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
    ```
    The `.exe` lands in `bin/Release/net10.0/win-x64/publish/FileHustle.exe`.
    Copy that whole `publish` folder anywhere and run it — no installer needed.
