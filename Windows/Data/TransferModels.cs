@@ -38,7 +38,7 @@ public class TransferHistoryEntry
     /// Empty for sent entries — there's nothing local to open/reveal.
     public List<string> ItemPaths { get; init; } = new();
 
-    public bool CanOpen => Direction == TransferDirection.Received && Status == TransferStatus.Completed && ItemPaths.Count > 0;
+    public bool CanSave => Direction == TransferDirection.Received && Status == TransferStatus.Completed && ItemPaths.Count > 0;
 
     public string DirectionArrow => Direction == TransferDirection.Sent ? "↑" : "↓";
 

@@ -19,7 +19,7 @@
                 <StackPanel Spacing="8">
                     <TextBlock Text="Save files after they arrive" FontSize="17" FontWeight="Bold" TextWrapping="Wrap"/>
                     <TextBlock TextWrapping="Wrap" Opacity="0.75"
-                               Text="A received file lands in FileHustle's own folder, not your regular downloads. Click Open next to it under Recent Transfers to open it with its default app — from there you can save or move it wherever you like."/>
+                               Text="A received file lands in FileHustle's own folder, not your regular downloads. Click Save as… next to it under Recent Transfers to choose where you'd actually like it."/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

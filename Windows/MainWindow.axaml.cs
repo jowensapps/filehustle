@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -125,22 +124,54 @@ public partial class MainWindow : Window
     }
 
     /// Received files land in FileHustle's own Documents subfolder with no
-    /// obvious way to actually use them — this opens the first item with
-    /// its default associated app (or Explorer, for a folder), which is
-    /// the natural "get it out of the app" action on Windows.
-    private void OnOpenReceivedClicked(object? sender, RoutedEventArgs e)
+    /// obvious way to actually use them — this lets the user copy the first
+    /// item out to wherever they actually want it, rather than silently
+    /// opening it with whatever app Windows has associated with it.
+    private async void OnSaveReceivedClicked(object? sender, RoutedEventArgs e)
     {
         var entry = (TransferHistoryEntry)((Button)sender!).Tag!;
         var path = entry.ItemPaths.FirstOrDefault();
         if (path == null) return;
 
+        var topLevel = GetTopLevel(this)!;
         try
         {
-            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+            if (Directory.Exists(path))
+            {
+                var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+                {
+                    Title = "Save To",
+                });
+                if (folders.Count == 0) return;
+                CopyDirectory(path, Path.Combine(folders[0].Path.LocalPath, Path.GetFileName(path)));
+            }
+            else
+            {
+                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+                {
+                    Title = "Save As",
+                    SuggestedFileName = Path.GetFileName(path),
+                });
+                if (file == null) return;
+                File.Copy(path, file.Path.LocalPath, overwrite: true);
+            }
         }
         catch (Exception ex)
         {
-            ShowError($"Couldn't open that file: {ex.Message}");
+            ShowError($"Couldn't save that file: {ex.Message}");
+        }
+    }
+
+    private static void CopyDirectory(string sourceDir, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), overwrite: true);
+        }
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            CopyDirectory(dir, Path.Combine(destDir, Path.GetFileName(dir)));
         }
     }
 

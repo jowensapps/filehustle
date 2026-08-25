@@ -62,7 +62,7 @@
                                     <TextBlock Text="{Binding ItemsSummary}"/>
                                     <TextBlock Text="{Binding DetailLine}" Opacity="0.6" FontSize="12"/>
                                 </StackPanel>
-                                <Button Content="Open" Click="OnOpenReceivedClicked" Tag="{Binding}" IsVisible="{Binding CanOpen}"/>
+                                <Button Content="Save as…" Click="OnSaveReceivedClicked" Tag="{Binding}" IsVisible="{Binding CanSave}"/>
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
