@@ -16,7 +16,7 @@
                 <Image Source="avares://FileHustle/Assets/AppIcon.png" Stretch="UniformToFill"/>
             </Border>
 
-            <TextBlock Text="Version 1.0.0" HorizontalAlignment="Center" Opacity="0.6" FontSize="13"/>
+            <TextBlock x:Name="VersionText" HorizontalAlignment="Center" Opacity="0.6" FontSize="13"/>
 
             <TextBlock Text="FileHustle was developed by" HorizontalAlignment="Center" TextAlignment="Center"/>
             <TextBlock Text="Jared Owens" HorizontalAlignment="Center" TextAlignment="Center" FontSize="17" FontWeight="SemiBold" Margin="0,-10,0,0"/>
