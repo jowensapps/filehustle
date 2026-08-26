@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Threading;
 using FileHustle.Data;
 using Makaretu.Dns;
@@ -32,11 +34,18 @@ public static class PeerDiscovery
     private static ServiceProfile? _profile;
     private static int _advertisedPort = -1;
     private static Timer? _restartTimer;
+    private static Timer? _pruneTimer;
 
     // Keyed by the fully-qualified instance name (e.g. "<id>|<name>._filehustle._tcp.local").
     private static readonly Dictionary<string, (string Id, string Name)> PendingInstances = new();
     private static readonly Dictionary<string, string> TargetsByInstance = new();
     private static readonly Dictionary<string, int> PortsByInstance = new();
+
+    // Keyed by peer Id. Written from the mDNS network-receive callback,
+    // read from the prune timer's own thread — needs to be thread-safe,
+    // unlike the dictionaries above which are only ever touched from one
+    // effective flow at a time.
+    private static readonly ConcurrentDictionary<string, DateTime> LastSeenByPeerId = new();
 
     private static MulticastService Mdns => _mdns ??= new MulticastService();
     private static ServiceDiscovery Sd => _serviceDiscovery ??= new ServiceDiscovery(Mdns);
@@ -45,10 +54,28 @@ public static class PeerDiscovery
     // multicast socket that's been open a long time (sleep/wake, WiFi
     // adapter reset, VPN toggle) can silently stop sending/receiving with
     // no exception to react to. Restarting the whole discovery/advertising
-    // cycle periodically works around it the same way. Peers are cleared
-    // on restart because OnAnswerReceived only ever adds/updates — it has
-    // no ability to retroactively prune a peer a stale session missed.
+    // cycle periodically works around it the same way. OnAnswerReceived
+    // only ever adds/updates a peer — it has no ability to retroactively
+    // prune one a stale session missed — so pruning happens separately,
+    // via PruneStale below, rather than by blanking the list here.
     private static readonly TimeSpan RestartInterval = TimeSpan.FromSeconds(60);
+
+    // A single mDNS query can silently vanish — dropped over WiFi, or
+    // answered while this device's socket is mid-rebind right after
+    // Mdns.Start() — with no exception to react to (this was previously
+    // observed as peers dropping out of the list for up to RestartInterval
+    // even though both devices were up: the restart cleared the list
+    // immediately and relied on exactly one query/response round trip to
+    // repopulate it). Re-querying a few times after restart, and only
+    // pruning a peer that fails to answer any of them, absorbs an
+    // occasional lost packet instead of surfacing it as a blank list.
+    private static readonly TimeSpan[] RequeryDelays =
+    {
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(5),
+    };
+
+    private static readonly TimeSpan PruneGrace = TimeSpan.FromSeconds(8);
 
     public static void StartAdvertising(int port)
     {
@@ -83,10 +110,13 @@ public static class PeerDiscovery
     {
         _restartTimer?.Dispose();
         _restartTimer = null;
+        _pruneTimer?.Dispose();
+        _pruneTimer = null;
         try { Sd.Unadvertise(); } catch { /* best effort */ }
         Mdns.Stop();
         _advertisedPort = -1;
         _profile = null;
+        LastSeenByPeerId.Clear();
         Dispatcher.UIThread.Post(Peers.Clear);
     }
 
@@ -96,12 +126,42 @@ public static class PeerDiscovery
         PendingInstances.Clear();
         TargetsByInstance.Clear();
         PortsByInstance.Clear();
-        Dispatcher.UIThread.Post(Peers.Clear);
 
         Mdns.Stop();
         Mdns.Start();
         Advertise();
+
+        var restartedAt = DateTime.UtcNow;
         Sd.QueryServiceInstances(ServiceType);
+        _ = RequeryWithRetriesAsync();
+
+        // Give peers a grace window to answer one of the re-queries above
+        // before pruning anyone who doesn't — see RequeryDelays/PruneGrace.
+        _pruneTimer?.Dispose();
+        _pruneTimer = new Timer(_ => PruneStale(restartedAt), null, PruneGrace, Timeout.InfiniteTimeSpan);
+    }
+
+    private static async Task RequeryWithRetriesAsync()
+    {
+        foreach (var delay in RequeryDelays)
+        {
+            await Task.Delay(delay);
+            try { Sd.QueryServiceInstances(ServiceType); } catch { /* best effort */ }
+        }
+    }
+
+    private static void PruneStale(DateTime restartedAt)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            for (var i = Peers.Count - 1; i >= 0; i--)
+            {
+                var id = Peers[i].Id;
+                if (LastSeenByPeerId.TryGetValue(id, out var lastSeen) && lastSeen >= restartedAt) continue;
+                Peers.RemoveAt(i);
+                LastSeenByPeerId.TryRemove(id, out _);
+            }
+        });
     }
 
     private static void OnServiceInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs e)
@@ -124,6 +184,7 @@ public static class PeerDiscovery
         PendingInstances.Remove(instanceKey);
         TargetsByInstance.Remove(instanceKey);
         PortsByInstance.Remove(instanceKey);
+        LastSeenByPeerId.TryRemove(decoded.Value.Id, out _);
         Dispatcher.UIThread.Post(() =>
         {
             for (var i = Peers.Count - 1; i >= 0; i--)
@@ -155,6 +216,7 @@ public static class PeerDiscovery
             if (!PortsByInstance.TryGetValue(match.Key, out var port)) continue;
 
             var peer = new Peer(info.Id, info.Name, record.Address.ToString(), port);
+            LastSeenByPeerId[peer.Id] = DateTime.UtcNow;
             Dispatcher.UIThread.Post(() =>
             {
                 var existingIndex = -1;
