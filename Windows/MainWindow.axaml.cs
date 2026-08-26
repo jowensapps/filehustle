@@ -124,29 +124,24 @@ public partial class MainWindow : Window
     }
 
     /// Received files land in FileHustle's own Documents subfolder with no
-    /// obvious way to actually use them — this lets the user copy the first
-    /// item out to wherever they actually want it, rather than silently
-    /// opening it with whatever app Windows has associated with it.
+    /// obvious way to actually use them — this lets the user copy the
+    /// item(s) out to wherever they actually want them, rather than
+    /// silently opening the first one with its default app. A transfer
+    /// with a single file gets a normal save-file picker; a transfer with
+    /// a folder or multiple items gets a destination-folder picker and
+    /// every item is copied into it (a multi-file transfer has no single
+    /// "the" filename to hand the OS's save dialog).
     private async void OnSaveReceivedClicked(object? sender, RoutedEventArgs e)
     {
         var entry = (TransferHistoryEntry)((Button)sender!).Tag!;
-        var path = entry.ItemPaths.FirstOrDefault();
-        if (path == null) return;
+        if (entry.ItemPaths.Count == 0) return;
 
         var topLevel = GetTopLevel(this)!;
         try
         {
-            if (Directory.Exists(path))
+            if (entry.ItemPaths.Count == 1 && !Directory.Exists(entry.ItemPaths[0]))
             {
-                var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                {
-                    Title = "Save To",
-                });
-                if (folders.Count == 0) return;
-                CopyDirectory(path, Path.Combine(folders[0].Path.LocalPath, Path.GetFileName(path)));
-            }
-            else
-            {
+                var path = entry.ItemPaths[0];
                 var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
                 {
                     Title = "Save As",
@@ -155,10 +150,26 @@ public partial class MainWindow : Window
                 if (file == null) return;
                 File.Copy(path, file.Path.LocalPath, overwrite: true);
             }
+            else
+            {
+                var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+                {
+                    Title = "Save To",
+                });
+                if (folders.Count == 0) return;
+                var destRoot = folders[0].Path.LocalPath;
+
+                foreach (var path in entry.ItemPaths)
+                {
+                    var dest = Path.Combine(destRoot, Path.GetFileName(path));
+                    if (Directory.Exists(path)) CopyDirectory(path, dest);
+                    else File.Copy(path, dest, overwrite: true);
+                }
+            }
         }
         catch (Exception ex)
         {
-            ShowError($"Couldn't save that file: {ex.Message}");
+            ShowError($"Couldn't save that: {ex.Message}");
         }
     }
 
