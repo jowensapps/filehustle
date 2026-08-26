@@ -56,14 +56,14 @@
                 <ItemsControl x:Name="HistoryList">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="data:TransferHistoryEntry">
-                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6">
-                                <TextBlock Text="{Binding DirectionArrow}" VerticalAlignment="Top"/>
-                                <StackPanel HorizontalAlignment="Stretch" MinWidth="260">
-                                    <TextBlock Text="{Binding ItemsSummary}"/>
-                                    <TextBlock Text="{Binding DetailLine}" Opacity="0.6" FontSize="12"/>
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6">
+                                <TextBlock Grid.Column="0" Text="{Binding DirectionArrow}" VerticalAlignment="Top" Margin="0,0,10,0"/>
+                                <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                                    <TextBlock Text="{Binding ItemsSummary}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding DetailLine}" Opacity="0.6" FontSize="12" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
-                                <Button Content="Save as…" Click="OnSaveReceivedClicked" Tag="{Binding}" IsVisible="{Binding CanSave}"/>
-                            </StackPanel>
+                                <Button Grid.Column="2" Content="Save as…" Click="OnSaveReceivedClicked" Tag="{Binding}" IsVisible="{Binding CanSave}" VerticalAlignment="Top"/>
+                            </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
