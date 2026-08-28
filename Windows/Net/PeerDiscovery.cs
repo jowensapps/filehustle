@@ -60,6 +60,19 @@ public static class PeerDiscovery
     // via PruneStale below, rather than by blanking the list here.
     private static readonly TimeSpan RestartInterval = TimeSpan.FromSeconds(60);
 
+    // Two devices launched around the same time end up with restart timers
+    // in lockstep — every cycle, both sides tear down and rebind their
+    // multicast socket (see Restart) within the same instant, so neither
+    // side's re-queries land and both prune each other, forever, every
+    // single RestartInterval. Jittering each reschedule desynchronizes the
+    // two timers after the first collision instead of letting them stay
+    // aligned indefinitely.
+    private static readonly TimeSpan RestartJitterSpread = TimeSpan.FromSeconds(15);
+    private static readonly Random RestartJitterRandom = new();
+
+    private static TimeSpan NextRestartDelay() =>
+        RestartInterval + TimeSpan.FromSeconds(RestartJitterRandom.NextDouble() * RestartJitterSpread.TotalSeconds * 2 - RestartJitterSpread.TotalSeconds);
+
     // A single mDNS query can silently vanish — dropped over WiFi, or
     // answered while this device's socket is mid-rebind right after
     // Mdns.Start() — with no exception to react to (this was previously
@@ -93,6 +106,20 @@ public static class PeerDiscovery
 
     public static void StartBrowsing()
     {
+        AttachHandlers();
+        ScheduleRestart();
+    }
+
+    // MulticastService.Stop() clears every event handler subscribed to that
+    // instance (documented behavior, not a bug in that library) — so the
+    // Restart() below can't just Stop()/Start() the same Mdns/Sd instances
+    // the way it used to, or OnAnswerReceived permanently stops firing after
+    // the very first restart and no peer can ever be (re)discovered again
+    // for the rest of the process's life. Restart() instead disposes and
+    // recreates fresh instances (see the Mdns/Sd lazy getters) and this
+    // re-wires handlers onto whichever instance is current.
+    private static void AttachHandlers()
+    {
         Sd.ServiceInstanceDiscovered += OnServiceInstanceDiscovered;
         // mDNS "goodbye" packet (TTL=0) — fires when a peer shuts down
         // FileHustle cleanly, the direct equivalent of Android's
@@ -101,7 +128,16 @@ public static class PeerDiscovery
         Sd.ServiceInstanceShutdown += OnServiceInstanceShutdown;
         Mdns.AnswerReceived += OnAnswerReceived;
         Mdns.NetworkInterfaceDiscovered += (_, _) => Sd.QueryServiceInstances(ServiceType);
-        _restartTimer = new Timer(_ => Restart(), null, RestartInterval, RestartInterval);
+    }
+
+    private static void ScheduleRestart()
+    {
+        _restartTimer?.Dispose();
+        _restartTimer = new Timer(_ =>
+        {
+            Restart();
+            ScheduleRestart();
+        }, null, NextRestartDelay(), Timeout.InfiniteTimeSpan);
     }
 
     public static void Start() => Mdns.Start();
@@ -127,7 +163,12 @@ public static class PeerDiscovery
         TargetsByInstance.Clear();
         PortsByInstance.Clear();
 
-        Mdns.Stop();
+        try { _serviceDiscovery?.Dispose(); } catch { /* best effort */ }
+        try { _mdns?.Dispose(); } catch { /* best effort */ }
+        _serviceDiscovery = null;
+        _mdns = null;
+
+        AttachHandlers();
         Mdns.Start();
         Advertise();
 
