@@ -47,6 +47,13 @@ public static class PeerDiscovery
     // effective flow at a time.
     private static readonly ConcurrentDictionary<string, DateTime> LastSeenByPeerId = new();
 
+    // Same thread-safety need as LastSeenByPeerId. Tracks how many
+    // consecutive query cycles a visible peer has failed to answer, so one
+    // lost round trip (a real, expected occurrence — see RequeryDelays)
+    // doesn't yank it off the list; only two in a row does.
+    private static readonly ConcurrentDictionary<string, int> MissStreakByPeerId = new();
+    private const int MaxMissedCyclesBeforePrune = 1;
+
     private static MulticastService Mdns => _mdns ??= new MulticastService();
     private static ServiceDiscovery Sd => _serviceDiscovery ??= new ServiceDiscovery(Mdns);
 
@@ -88,7 +95,10 @@ public static class PeerDiscovery
         TimeSpan.FromSeconds(5),
     };
 
-    private static readonly TimeSpan PruneGrace = TimeSpan.FromSeconds(8);
+    // Must clear the last RequeryDelays entry (5s) with room for the
+    // answer's round trip, or a legitimately-present peer whose only
+    // response was to that final retry gets pruned before it can land.
+    private static readonly TimeSpan PruneGrace = TimeSpan.FromSeconds(10);
 
     public static void StartAdvertising(int port)
     {
@@ -140,7 +150,18 @@ public static class PeerDiscovery
         }, null, NextRestartDelay(), Timeout.InfiniteTimeSpan);
     }
 
-    public static void Start() => Mdns.Start();
+    // Previously the first active query only happened whenever
+    // NetworkInterfaceDiscovered next fired (unreliable timing on Windows)
+    // or, failing that, whenever the first periodic Restart() timer landed
+    // — up to RestartInterval + RestartJitterSpread (75s) after launch.
+    // Querying immediately once the socket is actually up removes that
+    // wait for the common case; NetworkInterfaceDiscovered still covers
+    // interfaces that come up later (e.g. Wi-Fi reconnect).
+    public static void Start()
+    {
+        Mdns.Start();
+        QueryNow();
+    }
 
     public static void Stop()
     {
@@ -153,6 +174,7 @@ public static class PeerDiscovery
         _advertisedPort = -1;
         _profile = null;
         LastSeenByPeerId.Clear();
+        MissStreakByPeerId.Clear();
         Dispatcher.UIThread.Post(Peers.Clear);
     }
 
@@ -172,14 +194,19 @@ public static class PeerDiscovery
         Mdns.Start();
         Advertise();
 
-        var restartedAt = DateTime.UtcNow;
+        QueryNow();
+    }
+
+    private static void QueryNow()
+    {
+        var queriedAt = DateTime.UtcNow;
         Sd.QueryServiceInstances(ServiceType);
         _ = RequeryWithRetriesAsync();
 
         // Give peers a grace window to answer one of the re-queries above
         // before pruning anyone who doesn't — see RequeryDelays/PruneGrace.
         _pruneTimer?.Dispose();
-        _pruneTimer = new Timer(_ => PruneStale(restartedAt), null, PruneGrace, Timeout.InfiniteTimeSpan);
+        _pruneTimer = new Timer(_ => PruneStale(queriedAt), null, PruneGrace, Timeout.InfiniteTimeSpan);
     }
 
     private static async Task RequeryWithRetriesAsync()
@@ -191,16 +218,25 @@ public static class PeerDiscovery
         }
     }
 
-    private static void PruneStale(DateTime restartedAt)
+    private static void PruneStale(DateTime queriedAt)
     {
         Dispatcher.UIThread.Post(() =>
         {
             for (var i = Peers.Count - 1; i >= 0; i--)
             {
                 var id = Peers[i].Id;
-                if (LastSeenByPeerId.TryGetValue(id, out var lastSeen) && lastSeen >= restartedAt) continue;
+                if (LastSeenByPeerId.TryGetValue(id, out var lastSeen) && lastSeen >= queriedAt)
+                {
+                    MissStreakByPeerId.TryRemove(id, out _);
+                    continue;
+                }
+
+                var missed = MissStreakByPeerId.AddOrUpdate(id, 1, (_, prev) => prev + 1);
+                if (missed <= MaxMissedCyclesBeforePrune) continue;
+
                 Peers.RemoveAt(i);
                 LastSeenByPeerId.TryRemove(id, out _);
+                MissStreakByPeerId.TryRemove(id, out _);
             }
         });
     }
@@ -226,6 +262,7 @@ public static class PeerDiscovery
         TargetsByInstance.Remove(instanceKey);
         PortsByInstance.Remove(instanceKey);
         LastSeenByPeerId.TryRemove(decoded.Value.Id, out _);
+        MissStreakByPeerId.TryRemove(decoded.Value.Id, out _);
         Dispatcher.UIThread.Post(() =>
         {
             for (var i = Peers.Count - 1; i >= 0; i--)
