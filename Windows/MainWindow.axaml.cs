@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -16,6 +17,40 @@ namespace FileHustle;
 public partial class MainWindow : Window
 {
     private Peer? _nicknameTargetPeer;
+
+    // Captured from the row Button's own Flyout property (Button.Flyout is
+    // its own direct CLR property, not the generic FlyoutBase attached
+    // property — FlyoutBase.GetAttachedFlyout(button) always returns null
+    // for it; a prior version of this fix used that and silently did
+    // nothing). Tracking the row button itself, not just its Flyout, so
+    // ClosePeerFlyout can re-read the CURRENT Flyout at close time too.
+    private FlyoutBase? _openPeerFlyout;
+    private Button? _openPeerRowButton;
+
+    private void OnPeerRowClicked(object? sender, RoutedEventArgs e)
+    {
+        _openPeerRowButton = (Button)sender!;
+        _openPeerFlyout = _openPeerRowButton.Flyout;
+    }
+
+    /// Button.Flyout auto-opens on click but doesn't auto-close for a
+    /// Button clicked inside its own content, so every item in that menu
+    /// needs to close it explicitly before doing anything else. Re-reads
+    /// the row's Flyout fresh rather than trusting only the reference
+    /// captured when the menu opened, and closes both — the peer list can
+    /// replace a row's bound Peer between the menu opening and an item in
+    /// it being clicked (see the value-equality check in
+    /// PeerDiscovery.OnAnswerReceived, added to make this rare), which
+    /// regenerates that row's container and its Flyout object, orphaning
+    /// whatever reference was captured at open time.
+    private void ClosePeerFlyout()
+    {
+        var current = _openPeerRowButton?.Flyout;
+        _openPeerFlyout?.Hide();
+        if (current != null && !ReferenceEquals(current, _openPeerFlyout)) current.Hide();
+        _openPeerFlyout = null;
+        _openPeerRowButton = null;
+    }
 
     public MainWindow()
     {
@@ -89,6 +124,7 @@ public partial class MainWindow : Window
         _nicknameTargetPeer = peer;
         NicknamePromptText.Text = $"Give {peer.Name} a name you'll recognize next time — its broadcast name changes every launch.";
         NicknameTextBox.Text = PeerNicknames.Nickname(peer.Id) ?? "";
+        ClosePeerFlyout();
         NicknameOverlay.IsVisible = true;
     }
 
@@ -189,6 +225,7 @@ public partial class MainWindow : Window
     private async void OnSendFilesClicked(object? sender, RoutedEventArgs e)
     {
         var peer = (Peer)((Button)sender!).Tag!;
+        ClosePeerFlyout();
         var topLevel = GetTopLevel(this)!;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -202,6 +239,7 @@ public partial class MainWindow : Window
     private async void OnSendFolderClicked(object? sender, RoutedEventArgs e)
     {
         var peer = (Peer)((Button)sender!).Tag!;
+        ClosePeerFlyout();
         var topLevel = GetTopLevel(this)!;
         var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
@@ -219,6 +257,7 @@ public partial class MainWindow : Window
     private void OnSendTestFileClicked(object? sender, RoutedEventArgs e)
     {
         var peer = (Peer)((Button)sender!).Tag!;
+        ClosePeerFlyout();
         var path = Path.Combine(Path.GetTempPath(), $"filehustle-test-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.txt");
         File.WriteAllText(path, $"Hello from FileHustle debug test, sent at {DateTime.Now}.");
         _ = SendFilesAsync(new List<string> { path }, peer);

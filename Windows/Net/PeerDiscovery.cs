@@ -302,8 +302,20 @@ public static class PeerDiscovery
                 {
                     if (Peers[i].Id == peer.Id) { existingIndex = i; break; }
                 }
-                if (existingIndex >= 0) Peers[existingIndex] = peer;
-                else Peers.Add(peer);
+                if (existingIndex < 0) { Peers.Add(peer); return; }
+
+                // Every re-query (every restart cycle, or just an unprompted
+                // repeat answer) lands here even when nothing about the peer
+                // actually changed. Replacing the record unconditionally — a
+                // routine, frequent event — regenerates that row's container
+                // (Button + Flyout) each time, which silently invalidates any
+                // reference to it a menu action captured moments earlier
+                // (see OnPeerRowClicked/_openPeerFlyout in MainWindow): that
+                // was the actual source of the Set Nickname flyout
+                // intermittently failing to close, not just the specific
+                // close call used. Only replace — and only then touch the
+                // UI — when the value (host/port/name) genuinely differs.
+                if (Peers[existingIndex] != peer) Peers[existingIndex] = peer;
             });
         }
     }

@@ -27,7 +27,7 @@
                 <ItemsControl x:Name="PeersList">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="net:Peer">
-                            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,2" Tag="{Binding}">
+                            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,2" Tag="{Binding}" Click="OnPeerRowClicked">
                                 <Button.Content>
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <TextBlock Text="💻"/>
