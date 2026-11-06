@@ -17,6 +17,18 @@ public static class TransferServer
     /// iOS/Android's nullable `incomingRequest` state.
     public static event Action<TransferHeader?>? IncomingRequestChanged;
 
+    public enum ReceivePhase { Receiving, Completed, Failed }
+
+    public readonly record struct ReceiveProgress(string SenderName, ReceivePhase Phase, long BytesReceived, long TotalBytes);
+
+    /// Fires (from a background thread) once a request has been accepted
+    /// and bytes start arriving, periodically while they do, and once more
+    /// with Completed/Failed at the end — drives the receiving-side
+    /// progress ring so an accepted transfer is visibly incoming.
+    public static event Action<ReceiveProgress>? ReceiveProgressChanged;
+
+    private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(50);
+
     private static TcpListener? _listener;
     private static TaskCompletionSource<bool>? _pendingDecision;
     private static readonly object DecisionLock = new();
@@ -28,6 +40,63 @@ public static class TransferServer
     static TransferServer()
     {
         Directory.CreateDirectory(ReceivedFilesDir);
+        // Also on launch, not just on close — catches a previous session
+        // that crashed or was killed before its Closing handler ran.
+        ClearReceivedFiles();
+    }
+
+    /// Every top-level path this app has written into ReceivedFilesDir and
+    /// not yet cleaned up, one per line. Cleanup deletes ONLY what's listed
+    /// here, never "everything in the folder" — that folder can hold files
+    /// from older versions (which kept everything) that the user still
+    /// relies on, and a blanket sweep would silently destroy them.
+    private static readonly string ManifestPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "FileHustle", "received-this-session.txt");
+    private static readonly object ManifestLock = new();
+
+    /// Recorded BEFORE the bytes are written, so a receive cut short by a
+    /// crash still gets cleaned up on the next launch.
+    private static void TrackReceivedPath(string path)
+    {
+        lock (ManifestLock)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(ManifestPath)!);
+            File.AppendAllLines(ManifestPath, new[] { path });
+        }
+    }
+
+    /// Received files are only meant to live as long as the session's
+    /// Recent Transfers list (which is in-memory only) — "Save as…" is how
+    /// you keep one. Best effort: anything still locked (e.g. a receive
+    /// interrupted by closing the app) stays in the manifest for the next
+    /// launch to retry.
+    public static void ClearReceivedFiles()
+    {
+        lock (ManifestLock)
+        {
+            if (!File.Exists(ManifestPath)) return;
+            var root = Path.GetFullPath(ReceivedFilesDir) + Path.DirectorySeparatorChar;
+            var remaining = new List<string>();
+            foreach (var line in File.ReadAllLines(ManifestPath).Distinct())
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                var full = Path.GetFullPath(line);
+                // Never delete outside the Received folder, whatever the manifest says.
+                if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase)) continue;
+                try
+                {
+                    if (Directory.Exists(full)) Directory.Delete(full, recursive: true);
+                    else if (File.Exists(full)) File.Delete(full);
+                }
+                catch
+                {
+                    remaining.Add(full);
+                }
+            }
+            if (remaining.Count == 0) File.Delete(ManifestPath);
+            else File.WriteAllLines(ManifestPath, remaining);
+        }
     }
 
     /// Starts listening on an OS-assigned port and returns it.
@@ -102,8 +171,18 @@ public static class TransferServer
 
             if (accepted)
             {
-                var itemPaths = await ReceiveBodyAsync(header, stream);
+                List<string> itemPaths;
+                try
+                {
+                    itemPaths = await ReceiveBodyAsync(header, stream);
+                }
+                catch
+                {
+                    ReceiveProgressChanged?.Invoke(new ReceiveProgress(header.SenderName, ReceivePhase.Failed, 0, header.TotalBytes));
+                    throw;
+                }
                 RecordHistory(header, TransferStatus.Completed, itemPaths);
+                ReceiveProgressChanged?.Invoke(new ReceiveProgress(header.SenderName, ReceivePhase.Completed, header.TotalBytes, header.TotalBytes));
             }
             else
             {
@@ -120,18 +199,30 @@ public static class TransferServer
     private static async Task<List<string>> ReceiveBodyAsync(TransferHeader header, NetworkStream stream)
     {
         var itemPaths = new List<string>();
+        long received = 0;
+        var lastReport = DateTime.UtcNow;
+        ReceiveProgressChanged?.Invoke(new ReceiveProgress(header.SenderName, ReceivePhase.Receiving, 0, header.TotalBytes));
+        void OnBytes(int count)
+        {
+            received += count;
+            if (DateTime.UtcNow - lastReport < ProgressInterval) return;
+            lastReport = DateTime.UtcNow;
+            ReceiveProgressChanged?.Invoke(new ReceiveProgress(header.SenderName, ReceivePhase.Receiving, received, header.TotalBytes));
+        }
+
         foreach (var item in header.Items)
         {
-            var dest = Path.Combine(ReceivedFilesDir, Sanitize(item.RelativePath));
+            var dest = UniquePath(Path.Combine(ReceivedFilesDir, Sanitize(item.RelativePath)));
+            TrackReceivedPath(dest);
             if (item.IsFolder)
             {
-                await ReceiveFolderItemAsync(item, dest, stream);
+                await ReceiveFolderItemAsync(item, dest, stream, OnBytes);
             }
             else
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                 await using var fileStream = File.Create(dest);
-                await ReadExactlyAsync(stream, fileStream, item.Size);
+                await ReadExactlyAsync(stream, fileStream, item.Size, OnBytes);
             }
             itemPaths.Add(dest);
         }
@@ -143,17 +234,16 @@ public static class TransferServer
     /// named after the item, then discard the zip. `ZipFile.ExtractToDirectory`
     /// already rejects entries that would escape the destination directory
     /// (zip-slip), matching the manual sanitization Android does by hand.
-    private static async Task ReceiveFolderItemAsync(TransferItem item, string dest, NetworkStream stream)
+    private static async Task ReceiveFolderItemAsync(TransferItem item, string dest, NetworkStream stream, Action<int> onBytes)
     {
         var zipPath = Path.GetTempFileName();
         try
         {
             await using (var zipFileStream = File.Create(zipPath))
             {
-                await ReadExactlyAsync(stream, zipFileStream, item.Size);
+                await ReadExactlyAsync(stream, zipFileStream, item.Size, onBytes);
             }
 
-            if (Directory.Exists(dest)) Directory.Delete(dest, recursive: true);
             Directory.CreateDirectory(dest);
             ZipFile.ExtractToDirectory(zipPath, dest);
         }
@@ -177,7 +267,7 @@ public static class TransferServer
         return Encoding.UTF8.GetString(bytes.ToArray());
     }
 
-    private static async Task ReadExactlyAsync(Stream input, Stream output, long count)
+    private static async Task ReadExactlyAsync(Stream input, Stream output, long count, Action<int>? onBytes = null)
     {
         var buffer = new byte[64 * 1024];
         var remaining = count;
@@ -188,6 +278,22 @@ public static class TransferServer
             if (read == 0) throw new IOException("connection closed early");
             await output.WriteAsync(buffer.AsMemory(0, read));
             remaining -= read;
+            onBytes?.Invoke(read);
+        }
+    }
+
+    /// "photo.jpg" → "photo (1).jpg" if taken, so a new transfer never
+    /// overwrites (or, for folders, deletes) something already there.
+    private static string UniquePath(string path)
+    {
+        if (!File.Exists(path) && !Directory.Exists(path)) return path;
+        var dir = Path.GetDirectoryName(path)!;
+        var stem = Path.GetFileNameWithoutExtension(path);
+        var ext = Path.GetExtension(path);
+        for (var n = 1; ; n++)
+        {
+            var candidate = Path.Combine(dir, $"{stem} ({n}){ext}");
+            if (!File.Exists(candidate) && !Directory.Exists(candidate)) return candidate;
         }
     }
 

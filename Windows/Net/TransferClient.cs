@@ -19,11 +19,20 @@ public static class TransferClient
 
     private const int AckTimeoutMs = 60_000;
 
-    public static async Task SendAsync(List<SendableItem> items, Peer peer)
+    public enum SendPhase { Preparing, WaitingForAccept, Sending }
+
+    public readonly record struct SendProgress(SendPhase Phase, long BytesSent, long TotalBytes);
+
+    // How often byte-level progress is pushed to the UI — a report per
+    // 64KB chunk would flood the dispatcher on a fast LAN.
+    private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(50);
+
+    public static async Task SendAsync(List<SendableItem> items, Peer peer, IProgress<SendProgress>? progress = null)
     {
         var tempZips = new List<string>();
         try
         {
+            progress?.Report(new SendProgress(SendPhase.Preparing, 0, 0));
             var prepared = new List<(TransferItem Item, string Path)>();
             foreach (var item in items)
             {
@@ -31,7 +40,8 @@ public static class TransferClient
                 {
                     var zipPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.zip");
                     var folderName = new DirectoryInfo(item.Path).Name;
-                    ZipFile.CreateFromDirectory(item.Path, zipPath);
+                    // Off the UI thread — a big folder can take a while to zip.
+                    await Task.Run(() => ZipFile.CreateFromDirectory(item.Path, zipPath));
                     tempZips.Add(zipPath);
                     prepared.Add((
                         new TransferItem { Name = folderName, RelativePath = folderName, Size = new FileInfo(zipPath).Length, IsFolder = true },
@@ -69,6 +79,7 @@ public static class TransferClient
                     throw new TimedOutException();
                 }
 
+                progress?.Report(new SendProgress(SendPhase.WaitingForAccept, 0, header.TotalBytes));
                 await using var stream = client.GetStream();
                 var headerBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(header) + "\n");
                 await stream.WriteAsync(headerBytes, timeoutCts.Token);
@@ -86,11 +97,26 @@ public static class TransferClient
                 if (ackRead == 0) throw new IOException("connection closed before ack");
                 if (ackBuffer[0] != 1) throw new DeclinedException();
 
+                progress?.Report(new SendProgress(SendPhase.Sending, 0, header.TotalBytes));
+                long sent = 0;
+                var lastReport = DateTime.UtcNow;
+                var buffer = new byte[64 * 1024];
                 foreach (var (_, path) in prepared)
                 {
                     await using var fileStream = File.OpenRead(path);
-                    await fileStream.CopyToAsync(stream);
+                    int read;
+                    while ((read = await fileStream.ReadAsync(buffer)) > 0)
+                    {
+                        await stream.WriteAsync(buffer.AsMemory(0, read));
+                        sent += read;
+                        if (DateTime.UtcNow - lastReport >= ProgressInterval)
+                        {
+                            lastReport = DateTime.UtcNow;
+                            progress?.Report(new SendProgress(SendPhase.Sending, sent, header.TotalBytes));
+                        }
+                    }
                 }
+                progress?.Report(new SendProgress(SendPhase.Sending, sent, header.TotalBytes));
 
                 TransferHistoryStore.Record(peer.Name, itemNames, header.TotalBytes, TransferDirection.Sent, TransferStatus.Completed);
             }

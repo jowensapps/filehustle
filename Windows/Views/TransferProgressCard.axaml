@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:FileHustle.Views"
+             x:Class="FileHustle.Views.TransferProgressCard">
+    <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="12" Padding="24,20" Width="260"
+            BoxShadow="0 4 16 0 #40000000">
+        <StackPanel Spacing="12" HorizontalAlignment="Center">
+            <Grid Width="96" Height="96" HorizontalAlignment="Center">
+                <views:CircularProgress x:Name="Ring" Thickness="8" IndicatorBrush="{DynamicResource SystemAccentColor}"/>
+                <TextBlock x:Name="CenterText" FontSize="20" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+            <TextBlock x:Name="TitleText" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"/>
+            <TextBlock x:Name="SubtitleText" Opacity="0.6" FontSize="12" TextAlignment="Center" TextWrapping="Wrap"/>
+        </StackPanel>
+    </Border>
+</UserControl>

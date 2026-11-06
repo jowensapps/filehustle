@@ -8,7 +8,7 @@ FileHustle doesn't collect, store, or transmit any of your personal data — not
 
 ## What stays on your device
 
-Your device's broadcast name (a made-up name like "Tidy Yak") is generated fresh each launch and never stored. Any nicknames you give nearby devices, and your recent transfer history, are saved only on your device and never leave it.
+Your device's broadcast name (a made-up name like "Tidy Yak") is generated fresh each launch and never stored. Any nicknames you give nearby devices are saved only on your device and never leave it. On Windows, your recent transfer history is kept in memory only, and received files are deleted when you close the app unless you save them elsewhere with "Save as…".
 
 ## What happens during a transfer
 

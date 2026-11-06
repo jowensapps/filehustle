@@ -87,7 +87,7 @@
         <Border x:Name="ErrorOverlay" IsVisible="False" Background="#CC000000">
             <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="12" Padding="24" Width="320" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <StackPanel Spacing="12">
-                    <TextBlock Text="Couldn't send files" FontWeight="Bold" FontSize="16"/>
+                    <TextBlock x:Name="ErrorTitleText" Text="Couldn't send files" FontWeight="Bold" FontSize="16"/>
                     <TextBlock x:Name="ErrorText" TextWrapping="Wrap"/>
                     <Button Content="OK" Click="OnErrorOkClicked" HorizontalAlignment="Right"/>
                 </StackPanel>
@@ -95,9 +95,11 @@
         </Border>
 
         <Border x:Name="SendingOverlay" IsVisible="False" Background="#00000000" IsHitTestVisible="False">
-            <Border Background="{DynamicResource SystemAltHighColor}" CornerRadius="8" Padding="16,10" VerticalAlignment="Center" HorizontalAlignment="Center">
-                <TextBlock Text="Sending…"/>
-            </Border>
+            <views:TransferProgressCard x:Name="SendingCard" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        </Border>
+
+        <Border x:Name="ReceivingOverlay" IsVisible="False" Background="#00000000" IsHitTestVisible="False">
+            <views:TransferProgressCard x:Name="ReceivingCard" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Border>
 
         <Border x:Name="NicknameOverlay" IsVisible="False" Background="#CC000000">

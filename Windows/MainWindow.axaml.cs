@@ -65,6 +65,7 @@ public partial class MainWindow : Window
         TransferHistoryStore.Entries.CollectionChanged += (_, _) => NoHistoryText.IsVisible = TransferHistoryStore.Entries.Count == 0;
 
         TransferServer.IncomingRequestChanged += OnIncomingRequestChanged;
+        TransferServer.ReceiveProgressChanged += OnReceiveProgressChanged;
 
         Opened += async (_, _) =>
         {
@@ -87,6 +88,7 @@ public partial class MainWindow : Window
         {
             TransferServer.Stop();
             PeerDiscovery.Stop();
+            TransferServer.ClearReceivedFiles();
         };
     }
 
@@ -105,6 +107,44 @@ public partial class MainWindow : Window
             IncomingSizeText.Text = ByteFormat.Format(header.TotalBytes);
             IncomingOverlay.IsVisible = true;
         });
+    }
+
+    // Bumped on every new receive so a stale "Received ✓" auto-hide timer
+    // from a previous transfer can't hide the card for a newer one.
+    private int _receiveGeneration;
+
+    private void OnReceiveProgressChanged(TransferServer.ReceiveProgress p)
+    {
+        Dispatcher.UIThread.Post(async () =>
+        {
+            switch (p.Phase)
+            {
+                case TransferServer.ReceivePhase.Receiving:
+                    if (!ReceivingOverlay.IsVisible) _receiveGeneration++;
+                    ReceivingCard.ShowProgress($"Receiving from {p.SenderName}", p.BytesReceived, p.TotalBytes);
+                    ReceivingOverlay.IsVisible = true;
+                    break;
+
+                case TransferServer.ReceivePhase.Completed:
+                    ReceivingCard.ShowDone($"Received from {p.SenderName}", "Use Save as… in Recent Transfers to keep it");
+                    ReceivingOverlay.IsVisible = true;
+                    var generation = _receiveGeneration;
+                    await Task.Delay(1800);
+                    if (generation == _receiveGeneration) HideReceivingOverlay();
+                    break;
+
+                case TransferServer.ReceivePhase.Failed:
+                    HideReceivingOverlay();
+                    ShowError($"The transfer from {p.SenderName} was interrupted before it finished.", "Transfer failed");
+                    break;
+            }
+        });
+    }
+
+    private void HideReceivingOverlay()
+    {
+        ReceivingOverlay.IsVisible = false;
+        ReceivingCard.Reset();
     }
 
     private void OnAcceptClicked(object? sender, RoutedEventArgs e) => TransferServer.Respond(true);
@@ -205,7 +245,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            ShowError($"Couldn't save that: {ex.Message}");
+            ShowError($"Couldn't save that: {ex.Message}", "Couldn't save");
         }
     }
 
@@ -263,37 +303,58 @@ public partial class MainWindow : Window
         _ = SendFilesAsync(new List<string> { path }, peer);
     }
 
-    private async Task SendFilesAsync(List<string> paths, Peer peer)
-    {
-        SendingOverlay.IsVisible = true;
-        try
-        {
-            await TransferClient.SendAsync(paths.Select(p => new SendableItem { Path = p, IsFolder = false }).ToList(), peer);
-        }
-        catch (Exception ex)
-        {
-            ShowError(DescribeSendError(ex, peer.Name));
-        }
-        finally
-        {
-            SendingOverlay.IsVisible = false;
-        }
-    }
+    private Task SendFilesAsync(List<string> paths, Peer peer) =>
+        SendItemsAsync(paths.Select(p => new SendableItem { Path = p, IsFolder = false }).ToList(), peer);
 
-    private async Task SendFolderAsync(string path, Peer peer)
+    private Task SendFolderAsync(string path, Peer peer) =>
+        SendItemsAsync(new List<SendableItem> { new() { Path = path, IsFolder = true } }, peer);
+
+    private async Task SendItemsAsync(List<SendableItem> items, Peer peer)
     {
+        var name = peer.DisplayName;
+        var isFolder = items.Any(i => i.IsFolder);
+
+        // Progress<T> captures the UI SynchronizationContext here, so these
+        // callbacks already run on the UI thread — but they're posted, so a
+        // last report can land after SendAsync returns; `finished` keeps it
+        // from overwriting the ✓ state.
+        var finished = false;
+        var progress = new Progress<TransferClient.SendProgress>(p =>
+        {
+            if (finished) return;
+            switch (p.Phase)
+            {
+                case TransferClient.SendPhase.Preparing:
+                    SendingCard.ShowIndeterminate($"Sending to {name}", isFolder ? "Preparing folder…" : "Preparing…");
+                    break;
+                case TransferClient.SendPhase.WaitingForAccept:
+                    SendingCard.ShowIndeterminate($"Sending to {name}", $"Waiting for {name} to accept…");
+                    break;
+                case TransferClient.SendPhase.Sending:
+                    SendingCard.ShowProgress($"Sending to {name}", p.BytesSent, p.TotalBytes);
+                    break;
+            }
+        });
+
+        SendingCard.ShowIndeterminate($"Sending to {name}", "Preparing…");
         SendingOverlay.IsVisible = true;
         try
         {
-            await TransferClient.SendAsync(new List<SendableItem> { new() { Path = path, IsFolder = true } }, peer);
+            await TransferClient.SendAsync(items, peer, progress);
+            finished = true;
+            SendingCard.ShowDone($"Sent to {name}", "");
+            await Task.Delay(1200);
         }
         catch (Exception ex)
         {
-            ShowError(DescribeSendError(ex, peer.Name));
+            finished = true;
+            SendingOverlay.IsVisible = false;
+            ShowError(DescribeSendError(ex, name));
         }
         finally
         {
             SendingOverlay.IsVisible = false;
+            SendingCard.Reset();
         }
     }
 
@@ -304,8 +365,9 @@ public partial class MainWindow : Window
         _ => ex.Message,
     };
 
-    private void ShowError(string message)
+    private void ShowError(string message, string title = "Couldn't send files")
     {
+        ErrorTitleText.Text = title;
         ErrorText.Text = message;
         ErrorOverlay.IsVisible = true;
     }
