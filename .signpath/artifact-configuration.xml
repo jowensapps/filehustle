@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reference copy of the SignPath artifact configuration. Paste this into the
+  SignPath project (Artifact configurations -> "initial") after approval.
+  The GitHub artifact arrives as a zip containing FileHustle.exe; SignPath
+  only signs it if its embedded product name is "FileHustle" (set by
+  <Product> in Windows/FileHustle.csproj).
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="FileHustle.exe" product-name="FileHustle">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

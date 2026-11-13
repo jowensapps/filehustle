@@ -1,0 +1,103 @@
+name: Build and release (Windows)
+
+# Builds FileHustle.exe in CI from the tagged source so SignPath can verify
+# where the binary came from, then has SignPath sign it.
+#
+# - Push a tag like v1.3.1 to build, sign, and create a DRAFT release.
+# - Run manually (Actions tab -> Run workflow) to just build/sign and download
+#   the artifact without publishing anything.
+#
+# Signing is skipped until SignPath is set up. After approval, add:
+#   Repo secret:    SIGNPATH_API_TOKEN
+#   Repo variables: SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG,
+#                   SIGNPATH_SIGNING_POLICY_SLUG (e.g. release-signing)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the draft release
+  actions: read     # SignPath downloads the build artifact
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Check tag matches csproj version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          [xml]$proj = Get-Content Windows/FileHustle.csproj
+          $version = ($proj.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
+          $tag = '${{ github.ref_name }}'.TrimStart('v')
+          if ($version -ne $tag) {
+            Write-Error "Tag v$tag does not match <Version>$version</Version> in FileHustle.csproj"
+            exit 1
+          }
+
+      - name: Publish single-file exe
+        working-directory: Windows
+        run: >
+          dotnet publish -r win-x64 -c Release --self-contained true
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o ../out
+
+      - name: Upload unsigned build
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: FileHustle-unsigned
+          path: out/FileHustle.exe
+          if-no-files-found: error
+
+      - name: Sign with SignPath
+        if: vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: initial
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 86400  # waits for your manual approval
+          output-artifact-directory: signed
+
+      - name: Pick release file
+        id: pick
+        shell: pwsh
+        run: |
+          if (Test-Path signed/FileHustle.exe) {
+            $sig = Get-AuthenticodeSignature signed/FileHustle.exe
+            if ($sig.Status -ne 'Valid') { Write-Error "Signed exe signature is $($sig.Status)"; exit 1 }
+            "file=signed/FileHustle.exe" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Warning "SignPath not configured: release will be UNSIGNED."
+            "file=out/FileHustle.exe" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Upload signed build
+        if: vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: FileHustle-signed
+          path: signed/FileHustle.exe
+
+      - name: Create draft release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: ${{ steps.pick.outputs.file }}
+          generate_release_notes: true
