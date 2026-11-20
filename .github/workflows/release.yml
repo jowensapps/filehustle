@@ -1,16 +1,13 @@
 name: Build and release (Windows)
 
-# Builds FileHustle.exe in CI from the tagged source so SignPath can verify
-# where the binary came from, then has SignPath sign it.
+# Builds FileHustle from the tagged source:
+#   - FileHustle.exe   single-file exe for the GitHub Releases download
+#   - FileHustle.msix  package for Microsoft Store submission (the Store
+#                      signs it; it is not installable on its own)
 #
-# - Push a tag like v1.3.1 to build, sign, and create a DRAFT release.
-# - Run manually (Actions tab -> Run workflow) to just build/sign and download
-#   the artifact without publishing anything.
-#
-# Signing is skipped until SignPath is set up. After approval, add:
-#   Repo secret:    SIGNPATH_API_TOKEN
-#   Repo variables: SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG,
-#                   SIGNPATH_SIGNING_POLICY_SLUG (e.g. release-signing)
+# - Push a tag like v1.3.1 to build and create a DRAFT GitHub release.
+# - Run manually (Actions tab -> Run workflow) to just build and download
+#   the artifacts without publishing anything.
 
 on:
   push:
@@ -19,7 +16,6 @@ on:
 
 permissions:
   contents: write   # create the draft release
-  actions: read     # SignPath downloads the build artifact
 
 jobs:
   build:
@@ -31,17 +27,24 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Check tag matches csproj version
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Read version
+        id: version
         shell: pwsh
         run: |
           [xml]$proj = Get-Content Windows/FileHustle.csproj
           $version = ($proj.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
-          $tag = '${{ github.ref_name }}'.TrimStart('v')
-          if ($version -ne $tag) {
-            Write-Error "Tag v$tag does not match <Version>$version</Version> in FileHustle.csproj"
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            Write-Error "<Version> in FileHustle.csproj must be major.minor.patch (got '$version')"
             exit 1
           }
+          if ('${{ github.ref }}'.StartsWith('refs/tags/v')) {
+            $tag = '${{ github.ref_name }}'.TrimStart('v')
+            if ($version -ne $tag) {
+              Write-Error "Tag v$tag does not match <Version>$version</Version> in FileHustle.csproj"
+              exit 1
+            }
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Publish single-file exe
         working-directory: Windows
@@ -50,54 +53,46 @@ jobs:
           -p:PublishSingleFile=true
           -p:EnableCompressionInSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          -o ../out
+          -o ../out/exe
 
-      - name: Upload unsigned build
-        id: upload-unsigned
-        uses: actions/upload-artifact@v7
-        with:
-          name: FileHustle-unsigned
-          path: out/FileHustle.exe
-          if-no-files-found: error
+      - name: Publish app folder for MSIX
+        working-directory: Windows
+        run: dotnet publish -r win-x64 -c Release --self-contained true -o ../out/msix-root
 
-      - name: Sign with SignPath
-        if: vars.SIGNPATH_ORGANIZATION_ID != ''
-        uses: signpath/github-action-submit-signing-request@v2
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
-          artifact-configuration-slug: initial
-          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
-          wait-for-completion: true
-          wait-for-completion-timeout-in-seconds: 86400  # waits for your manual approval
-          output-artifact-directory: signed
-
-      - name: Pick release file
-        id: pick
+      - name: Build MSIX package
         shell: pwsh
         run: |
-          if (Test-Path signed/FileHustle.exe) {
-            $sig = Get-AuthenticodeSignature signed/FileHustle.exe
-            if ($sig.Status -ne 'Valid') { Write-Error "Signed exe signature is $($sig.Status)"; exit 1 }
-            "file=signed/FileHustle.exe" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Warning "SignPath not configured: release will be UNSIGNED."
-            "file=out/FileHustle.exe" >> $env:GITHUB_OUTPUT
-          }
+          $root = 'out/msix-root'
+          # Manifest with the package version (Store requires 4th part = 0)
+          $manifest = Get-Content Windows/Package/AppxManifest.xml -Raw
+          $manifest = $manifest -replace 'Version="0\.0\.0\.0"', 'Version="${{ steps.version.outputs.version }}.0"'
+          Set-Content "$root/AppxManifest.xml" $manifest -Encoding utf8
+          Copy-Item Windows/Package/Images "$root/Images" -Recurse
 
-      - name: Upload signed build
-        if: vars.SIGNPATH_ORGANIZATION_ID != ''
+          $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" |
+            Sort-Object { [version]$_.Directory.Parent.Name } | Select-Object -Last 1
+          if (-not $makeappx) { Write-Error 'makeappx.exe not found'; exit 1 }
+          & $makeappx.FullName pack /d $root /p out/FileHustle.msix /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload exe
         uses: actions/upload-artifact@v7
         with:
-          name: FileHustle-signed
-          path: signed/FileHustle.exe
+          name: FileHustle-exe
+          path: out/exe/FileHustle.exe
+          if-no-files-found: error
+
+      - name: Upload MSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: FileHustle-msix
+          path: out/FileHustle.msix
+          if-no-files-found: error
 
       - name: Create draft release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
           draft: true
-          files: ${{ steps.pick.outputs.file }}
+          files: out/exe/FileHustle.exe
           generate_release_notes: true

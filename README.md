@@ -63,27 +63,6 @@ email [j.owens.apps@gmail.com](mailto:j.owens.apps@gmail.com).
 ## Privacy
 
 FileHustle collects no data — see [`PRIVACY.md`](PRIVACY.md).
-
-## Code signing policy
-
-Free code signing provided by [SignPath.io](https://about.signpath.io),
-certificate by [SignPath Foundation](https://signpath.org).
-
-Release builds are produced by [GitHub Actions](.github/workflows/release.yml)
-directly from the tagged source in this repository and signed through
-SignPath. Only binaries built this way are signed.
-
-**Team roles**
-
-- Committers and reviewers: [jowensapps](https://github.com/jowensapps)
-- Approvers: [jowensapps](https://github.com/jowensapps)
-
-Every signing request is manually approved before release.
-
-**Privacy:** This program will not transfer any information to other
-networked systems unless specifically requested by the user or the person
-installing or operating it. See [`PRIVACY.md`](PRIVACY.md).
-
 ## License
 
 GPL-3.0 — see [`LICENSE`](LICENSE).
