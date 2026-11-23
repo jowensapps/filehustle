@@ -11,13 +11,20 @@ this client implements.
 
 ## Download
 
-The easiest way to get FileHustle is to grab the prebuilt executable from
-the [Releases page](https://github.com/jowensapps/filehustle/releases) —
+**Recommended:** install FileHustle from the
+[Microsoft Store](https://apps.microsoft.com/detail/9NQM0BFJTRX1). The
+Store version is signed by Microsoft, updates automatically, and runs
+on PCs with Smart App Control turned on.
+
+**Alternative:** grab the prebuilt executable from the
+[Releases page](https://github.com/jowensapps/filehustle/releases) —
 download `FileHustle.exe` and run it, no installation needed.
 
-> **Note:** Windows may show a SmartScreen warning ("Windows protected
-> your PC") since the exe isn't code-signed. Click **More info** → **Run
-> anyway** to proceed.
+> **Note:** the Releases exe isn't code-signed. Windows may show a
+> SmartScreen warning ("Windows protected your PC") — click **More info**
+> → **Run anyway** to proceed. On PCs with **Smart App Control** turned
+> on, the exe is blocked entirely; use the Microsoft Store version
+> instead.
 
 ## Building and running
 
